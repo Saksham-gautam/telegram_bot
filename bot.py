@@ -3,16 +3,20 @@ from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 import logging
 import asyncio
+from datetime import datetime
 
 # Enable logging
 logging.basicConfig(format="%(asctime)s - %(levelname)s - %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Replace with your new bot token from BotFather
-BOT_TOKEN = "8172806018:AAH-ZnBWRiuqWFEG7P7ockuF_f9lwVOAPwk"
+BOT_TOKEN = "8172806018:AAH-ZnBWRiuqWFEG7P7ockuF_f9lwVOAPwkß"
 
 # Use in-memory set to track active users during runtime only
 active_users = set()
+
+# Dictionary to track message delivery stats
+message_stats = {}
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handles the /start command"""
@@ -24,8 +28,23 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     
     await update.message.reply_text(
         "👋 Welcome to the Anonymous Message Bot!\n\n"
-        "Any message you send here will be forwarded anonymously to everyone else using this bot."
+        "Any message you send here will be forwarded anonymously to other users.\n\n"
+        "Use /user to see how many people received your message."
     )
+
+async def user_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handles the /user command"""
+    user_id = update.effective_chat.id
+    
+    if user_id in message_stats:
+        last_message = message_stats[user_id]
+        await update.message.reply_text(
+            f"Your last message was sent to {last_message['recipient_count']} users at {last_message['timestamp']}."
+        )
+    else:
+        await update.message.reply_text(
+            "You haven't sent any messages yet."
+        )
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Forwards messages anonymously to all users"""
@@ -53,7 +72,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             try:
                 await context.bot.send_message(
                     chat_id=user_id,
-                    text=f"{message_text}"
+                    text=f" {message_text}"
                 )
                 sent_count += 1
                 await asyncio.sleep(0.05)  # Small delay to avoid rate limits
@@ -65,15 +84,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     for user_id in users_to_remove:
         active_users.discard(user_id)
     
-    # Confirm to sender
-    if sent_count > 0:
-        await update.message.reply_text(
-            f"Your message was sent to {sent_count} users."
-        )
-    else:
-        await update.message.reply_text(
-            "No users received your message. You're currently the only active user."
-        )
+    # Store message stats for the /user command without sending a confirmation
+    message_stats[sender_id] = {
+        'recipient_count': sent_count,
+        'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    }
+    
+    # No confirmation message sent to the user
     
     logger.info(f"Message forwarded to {sent_count} users")
 
@@ -88,6 +105,7 @@ def main() -> None:
     
     # Add command handlers
     application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("user", user_command))
     
     # Add message handler
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
