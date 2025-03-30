@@ -10,7 +10,7 @@ logging.basicConfig(format="%(asctime)s - %(levelname)s - %(message)s", level=lo
 logger = logging.getLogger(__name__)
 
 # Replace with your new bot token from BotFather
-BOT_TOKEN = "8172806018:AAH-ZnBWRiuqWFEG7P7ockuF_f9lwVOAPwkß"
+BOT_TOKEN = "8172806018:AAH-ZnBWRiuqWFEG7P7ockuF_f9lwVOAPwk"
 
 # Use in-memory set to track active users during runtime only
 active_users = set()
